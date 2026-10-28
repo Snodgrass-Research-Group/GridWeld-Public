@@ -1,0 +1,15 @@
+Data licence: Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Copyright (c) 2026 Jonathan M. Snodgrass
+
+The data files in src/gridweld/data/ are licensed under CC BY 4.0:
+https://creativecommons.org/licenses/by/4.0/legalcode
+
+You may share and adapt them for any purpose, including commercially, if you
+give appropriate credit, link to the licence, and indicate whether you made
+changes. Credit: "GridWeld data, Jonathan M. Snodgrass (2026)", plus the
+original sources listed under "Data sources" in README.md, which keep their
+own terms.
+
+The source code in this repository is licensed separately under the MIT
+licence in LICENSE.

@@ -1,0 +1,48 @@
+[project]
+name = "gridweld"
+version = "0.1.0"
+description = "Real-GIS synthetic test-system builder (CATS pipeline consolidation: GIS cleaning, Julia build, MATLAB parameterization/resizing, DCOPF feasibility, exports), Python conversion of the multi-author CATS codebase"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Jonathan Snodgrass", email = "snodgrass@tamu.edu" }]
+dependencies = [
+    # DC/AC power flow, impedance, conductor catalog
+    "gridforge @ git+https://github.com/Snodgrass-Research-Group/GridForge-Public.git@main",
+    # resize/shunts/scenarios/dispatch reuse
+    "gridcrucible @ git+https://github.com/Snodgrass-Research-Group/GridCrucible-Public.git@main",
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "pandas>=2.2",
+    "pyarrow>=15.0",       # parquet data store (conductors/tower/form1, D2)
+    "networkx>=3.2",       # bus-branch graph, leaf detection, components
+    "gurobipy>=11.0",      # MILP load assignment, UCED/UCCD QP, DCOPF (D7)
+    "openpyxl>=3.1",       # EIA_Generators_Combined xlsx (assign_gen_limits, doc 05)
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+
+[project.scripts]
+gridweld = "gridweld.pipeline:main"
+
+# To develop against local clones instead, install them editable after
+# syncing, e.g. `uv pip install -e ../GridForge-Public -e ../GridCrucible-Public`.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gridweld"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: long-running fixture-scale loops (DC resize, full dispatch)"]

@@ -1,0 +1,285 @@
+# CATS (California Test System) run configuration — decision D8: every
+# CA-specific value lives HERE, never in library code. Values are the legacy
+# actuals extracted by algorithm docs 01-07 ("Proposed config extractions"
+# sections); the MATLAB/Julia origin is cited per key group. WeldConfig
+# defaults equal these values, so this file is the explicit, reviewable
+# record — loading it must be a no-op against a bare WeldConfig().
+#
+# Load with: gridweld.WeldConfig.from_toml("configs/cats.toml")
+# Unknown sections/keys are errors (typo protection).
+
+# gis_clean (S1) needs ArcGIS Pro's Python and is run separately, so the
+# default run starts at build.
+stages = ["build", "parameterize", "merge_topology", "scenarios",
+          "size_transformers", "dc_resize", "dcopf", "reactive",
+          "ac_resize", "export"]
+
+# ---------------------------------------------------------------------------
+[paths]  # doc 02 I/O contract + doc 03 §Input data (fixes Q2/DV2 casing)
+# root: absolute; everything else resolves against it
+# (default root = <repo>/legacy — set explicitly when running elsewhere)
+substations = "Data/California_Electric_Substations_11_17_21.csv"
+added_nodes = "Data/Added_Nodes_11_17_21.csv"
+eia_generators = "Data/EIA_Generator_Y2019.csv"
+eia_plants = "Data/EIA_Plant_Y2019.csv"
+cost_curves = "Data/Generator_Cost_Curves.csv"
+# load_apportionment, xfdata_csv and xfxr_csv default to files shipped in this
+# repository (src/gridweld/data/caiso_loads_corrected.csv — DV6/D-1: corrected
+# loadsmith CAISO; validation/fixtures/matlab/xf*.csv — B1 CSV exports) and
+# resolve there whatever root is. Set them here only to use other files.
+transmission = "Jonathan_Code/Input Data/CAGISData Removed planned lines.csv"
+form1 = "Jonathan_Code/Input Data/Form1.csv"
+tower_data = "Jonathan_Code/Input Data/TowerData.csv"
+conductor_dir = "Jonathan_Code/Data Files/Conductor Data Tables"
+gis_branch_table = "Jonathan_Code/Input Data/CAGISData.csv"  # S3 raw (P3a fixtures)
+eia_limits = "Jonathan_Code/Aditya_Code/Data Files/EIA_Generators_Combined_2010.xlsx"
+gis_lines = "Data/GIS/lines.geojson"                  # S7 round-trip inputs
+gis_substations = "Data/GIS/substations.geojson"
+gis_added_nodes = "Data/GIS/added_nodes.geojson"
+tl_extra = "Data/CATS_transmission_line_data.csv"
+
+# ---------------------------------------------------------------------------
+[system]  # shared constants (docs 02/03/04/05)
+name = "California SynGrid"        # grid["name"], generate_grid_script.jl
+region = "CAISO"                   # options.Region, PSERCMain.m
+s_base_mva = 100.0                 # options.SBase (+ hard-coded 100s: RXB Zbase,
+                                   # DCPowerFlow* flow scaling, Table2Matpower)
+build_base_mva = 1.0               # grid["baseMVA"]=1, per_unit=true at S2 export
+                                   # ("Not verified" in-source; S6 depends on it)
+voltage_levels = [66, 115, 230, 500]   # options.VoltageLevels ≡ S2 kV remap set
+km_per_mile = 1.60934              # PSERCMain (gridforge's 1.61 must NOT leak in)
+rng_seed = 42                      # D10 single Generator; dump scripts used rng(42)
+
+[geo]  # doc 02 §snapping / doc 03 §DistanceCalc
+earth_radius_km = 6371.0           # must equal gis.earth_radius_m / 1000 (PD-9)
+
+# ---------------------------------------------------------------------------
+[gis]  # doc 01 config table (verbatim keys)
+backend = "arcpy"                  # D4: 'open' backend is the P8 stretch
+utm_zone = 10                      # legacy utm.to_latlon fallback only (PD-13)
+utm_band = "S"
+earth_radius_m = 6371000.0         # unify 6373 km / 6371 km variants (PD-9)
+node_round_decimals = 6            # Method1 rounded_coord bus dedup (PD-7)
+status_exclude = ["Unknown", " "]  # PD-14: keeps 14 Proposed + 1 Closed —
+                                   # intent to be confirmed by the author
+length_units = "us_survey_miles"   # CalculateGeometryAttributes "Miles (United States)"
+
+[gis.clean.distribution]  # PG&E feeder knobs (Feeder_Cleanser/Method1)
+feature_to_line_tol_m = 15.0
+generalize_tol_m = 30.0
+extend_line_m = 10.0
+snap_edge_m = 5.0
+attribute_map_tol_m = 50.0         # Feeder_Cleanser Tol (Method1 used 0 + fill)
+spatial_join_radius_m = 10.0       # legacy SpatialJoin_analysis search_radius
+default_kv = "12kV"
+
+[gis.clean.transmission]  # CEC transmission knobs (doc 01 knobs table)
+feature_to_line_tol_m = 1.0        # 15 m would fuse double-circuit corridors
+generalize_tol_m = 0.0             # skip: preserve geodesic Length_mi for R/X/B
+extend_line_m = 10.0
+snap_edge_m = 5.0                  # snap target = substation VERTEX
+attribute_map_tol_m = 0.0
+spatial_join_radius_m = 0.0
+default_kv = ""                    # missing transmission kV is an ERROR
+dedup_node_tol_m = 2.0             # DeleteIdentical "2 Meter"
+substation_overlap_radius_m = 12.0 # Near_analysis "12"
+tap_split_radius_m = 1.0           # SplitLineAtPoint "1 Meter"
+
+[gis.island_sweep]  # Island_Destroyer parameter sweep
+extend_step_m = 3.0
+snap_step_m = 1.5
+extend_max_m = 50.0
+max_stitch_m = 5000.0              # transmission: refuse longer phantom edges (new)
+
+[gis.batch]  # Method1 parallel driver
+max_workers = 8
+skip_items = [514, 812, 1007, 1953, 2331]   # known-bad feeders (+387 older batch)
+
+# ---------------------------------------------------------------------------
+[build]  # doc 02 config table
+remove_tiny_lines = true
+export_matpower = true
+export_largest = true
+export_json = false
+kv_levels = [66, 115, 230, 500]    # remap targets; ties → FIRST/lowest (findmin)
+jitter_deg = 1e-4                  # import-gen & split-bus lat/lon wiggle
+transformer_tap = 1.0              # basic_transformer, create_transformers!
+transformer_shift = 0.0
+
+[snapping]
+warn_km = 15.0                     # `distance_error` (node_assign/edge_assign)
+
+[loads]
+milp_warn_km = 50.0                # MILP post-solve warning (NOT the 15 km one)
+solver = "gurobi"
+
+[eia]
+state = "CA"
+exclude_status = ["SB"]            # standby units dropped
+
+[costs]  # doc 02 §cost-curve assignment
+renewables = [
+    "Onshore Wind Turbine", "Offshore Wind Turbine",
+    "Solar Thermal without Energy Storage", "Solar Photovoltaic", "Geothermal",
+]                                  # verbatim incl. Offshore (not in gen_types — keep)
+renewable_cost = [0.0, 0.0, 0.0]
+nuclear_linear_usd_per_mwh = 7.027528611197031    # = 113.6/16.165 (EIA CA 2019)
+import_linear_usd_per_mwh = 31.39517458414506     # = 209.5/6.673 (9.20 $/MMBtu)
+import_pmax_mw = 200.0
+legacy_nearest_capacity = true     # reproduce the comparator drift bug (doc 02
+                                   # step 5); false = true argmin, needs DV row
+
+[costs.fallback_donor_map]
+"Other Natural Gas" = "Natural Gas Steam Turbine"
+"Municipal Solid Waste" = "Landfill Gas"
+
+# ---------------------------------------------------------------------------
+[params]  # doc 03 config table (S3 parameterization)
+routing_factor = 1.28              # PSERCMain:130
+min_length_mi = 0.1                # PSERCMain:128
+stability_angle_deg = 45.0         # RateA cap = SBase·sin(45°)/X
+owner_matched_utilities = ["SDG&E", "SCE"]   # Form 1 owner filter
+random_gmd = false                 # options.RandomGMD
+tower_spacing_choices = [1, 2, 3]  # PSERCMain randi(3) TowerIndex domain (DV3)
+xf_initial_mva = 2000.0            # SizeTransformers initial rating
+xf_unit_max_mva = 2000.0           # above → ceil(RateA/2000) parallel units
+xf_min_mva = 20.0                  # MinCondIndex clamp floor
+xf_small_mva = 50.0                # below → fixed X/R
+xf_small_xr = 25.0
+xf_max_index_factor = 1.2          # MaxCondIndex = 1.2·max(XFXR.MVA)
+
+# ---------------------------------------------------------------------------
+[dispatch]  # doc 03 §SetOptions/CreateSNet (names mirror gridcrucible, D5)
+mode = "Full"                      # options.Dispatch
+load_data = "sine"                 # options.LoadData
+buses = "given"                    # options.Buses
+load_scenarios = 24
+uc_scenarios = 2                   # final SetOptions value (ED + CD)
+use_ed = true
+use_cd = true
+reserve = 0.2                      # options.Reserve
+sine_amplitude = 0.3               # SineLoad = 0.3·sin(θ) + 0.7
+sine_offset = 0.7
+gen_n_minus_1 = false              # options.GenN_1
+gen_contingency_min_mw = 2500.0    # options.GenConSize
+hydro_ratio_threshold = 1.2        # hydro thirds engage when GenLoadRatio > this
+hydro_thirds = [0.6666666666666666, 1.0, 0.3333333333333333]   # [2/3, 1, 1/3]
+low_load_floor_mw = 0.2            # CreateSNet clamp (no-op in 'given', DV-P3-4)
+low_load_floor_mvar = 0.12
+min_dispatch_mw = 0.1              # UCED/UCCD cleanup threshold
+
+# ---------------------------------------------------------------------------
+[powerflow]  # doc 04 (s_base lives in [system])
+ac_tol = 1e-8                      # pfsolve.m missing (DV-C) — gridforge reference
+ac_max_iter = 30
+long_line = true                   # ACPF.LongLine = 1
+
+[resize]  # docs 03+04 (⚠ several values differ from gridcrucible defaults:
+          # percent_change 1.2 vs 1.3, downsize_threshold 0.3 vs 0.5,
+          # valve 20 vs 15 — always pass explicitly)
+upsize = true
+downsize = true
+percent_resize = 0.05              # SetOptions.PercentResize
+ac_percent_resize = 0.01           # MiddleLoopAC override
+percent_change = 1.2               # SetOptions.PercentChange
+conductor_margin = 1.0             # comment demands "1.X" but value IS 1.0
+downsize_threshold = 0.3           # SetOptions.DownsizeThreshold
+random_resize = true               # SetOptions.RandomResize (false = DV-D hazard)
+downsize_keep = false              # DV-G decision pending (legacy read it nowhere)
+max_circuits = 8                   # ResizeBranches clamp
+dc_term_overloads = 0              # PSERCMain TermCriteria
+ac_term_overloads = 5              # MiddleLoopAC MLTermCriteria
+valve_after_iters = 20             # both loops: TermCriteria += 1/pass after
+dc_change_voltages = false         # options.changevoltages (lowercase twin)
+ac_change_voltages = true          # options.ChangeVoltages (capital twin)
+max_passes = 200                   # hard safety cap on loop passes
+
+[reactive]  # doc 04 §9
+high_q_mvar = 10000.0              # ACPF.HighQ (gridcrucible hard-codes 800 — DV-E)
+low_q_mvar = -10000.0              # ACPF.LowQ (gridcrucible: −1200 — DV-E)
+per_switch = 0.05
+per_switch_decay = 0.9
+per_switch_floor = 1e-2
+v_switch_band = [0.95, 1.05]       # bank-limited PV→PQ switching, pu
+v_place_band = [0.94, 1.06]        # permanent condenser placement, pu
+support_fraction = 0.2             # winnowing stop
+ed_scenario_count = 42             # magic `1:42` max-load window
+gen_vset = 1.0                     # supersedes the DC-era 1.02 in this stage
+b_charging_cap = 1.0               # OLBranch.B(B>1)=1 series-comp stand-in
+
+# ---------------------------------------------------------------------------
+[feasibility]  # doc 05 (DV1: gurobipy, not YALMIP+Mosek)
+w_deviation = 0.95                 # lambda_1
+w_cost = 0.05                      # lambda_2
+w_violation = 0.0                  # lambda_3 — line limits VACUOUS by design
+term_overloads = 2                 # TermCriteria seed (v2 looser than v1's 0)
+term_relax_after = 20
+max_workers = 0                    # 0 → cpu_count, capped by parallel.worker_cap
+numeric_focus = 3                  # Gurobi NumericFocus (DV1 dump hardening)
+bar_homogeneous = true             # Gurobi BarHomogeneous=1 (DV1 dump hardening)
+max_passes = 200                   # hard safety cap on the S5 loop
+
+[feasibility.qa]
+deadline_kv_min = 100.0            # dead-line report: kV ≥ this
+deadline_flow_mw = 1e-2            # and MaxDCPF < this
+
+# ---------------------------------------------------------------------------
+[io]  # doc 03 §ReadMatpower/Table2Matpower defaults
+default_line_rxb = [0.01, 0.1, 0.001]   # pu placeholders until RXB
+default_xf_rxb = [1e-6, 1e-5, 0.0]      # pu bus-tie placeholders
+vmax = 1.06
+vmin = 0.94
+gen_voltage_setpoint = 1.02        # PF.VBusSet at gen/slack buses (DC era)
+dummy_cost = 0.1                   # missing-gencost coefficient
+
+[parallel]  # docs 04/05 (RAM gate dropped — explicit flags)
+ac_parallel = false
+ac_workers_per_core = 1.5
+worker_cap = 32
+
+# ---------------------------------------------------------------------------
+[export.powerworld]  # doc 07 WritePowerWorld.m
+network_tag = "CAISO"
+region_tag = ""
+limit_b_factor = 1.1
+limit_c_factor = 1.15
+commit_threshold_mw = 0.1
+shunt_margin = 1.3
+pu_sniff_factor = 40.0             # WriteLoads ×40 auto-pu rule (DV-07c)
+pu_threshold_mw = 20000.0          # Aditya-fork PeakLoad rule (DV-07c)
+load_sign = "negative"             # DV-07e ruled: loads = negative injection real part
+reg_high = 1.06
+reg_low = 0.94
+block_steps = 10
+
+[export.gis]  # doc 07 reformat_GIS.jl
+feet_to_km = 0.0003048
+outdated_fields = ["Length_Fee", "GlobalID", "Legend", "Creator", "Structur_1",
+    "kV_Sort", "Engineerin", "Source", "Length_Mil", "Status", "FID", "Name",
+    "Structure_", "TLine_Name", "OBJECTID", "Engineer_1", "Owner", "Length_mi",
+    "Last_Edito"]                  # the 19 names, reformat_GIS.jl:51-52
+preserve_added_node_props = true   # DV-07d approved: keep originals + add CATS fields
+
+[export.qa]
+long_distance_km = 15.0            # matches [snapping] warn_km
+
+# ---------------------------------------------------------------------------
+[eval]  # doc 06 — read by julia/GridWeldEval bin/eval.jl (P6), not Python
+n_hours = 24
+case_path = "Final_Grid/updated models/cal_grid_acpf_v4.m"
+renewable_csv = "Renewable Data/Renewable_data_2020_eval.csv"
+load_csv = "Load Data/Load_Agg_Post_Assignment.csv"   # ⚠ file LOST (DV-P6-4)
+load_mvar_csv = ""                 # set → load_csv/load_mvar_csv are the WriteLoads
+                                   # MW/MVar pair (DV-P6-4); "" → legacy single format
+gen_data_csv = "Additional Data Files/gen_data.csv"
+solver = "ipopt"
+save_solutions = false
+save_summary = false
+solutions_dir = "Grid_Evaluation/solutions"
+first_gen_col = 5                  # DV-P6-3: legacy 6 was a confirmed off-by-one
+renewable_target = "pg"            # DV-P6-5: "pmax" = suspected intent (pending)
+
+[eval.renewables]
+solar_types = ["Solar Photovoltaic"]
+wind_types = ["Onshore Wind Turbine"]
+caiso_year_rows = 105408           # 366 d × 288 five-minute intervals (2020)

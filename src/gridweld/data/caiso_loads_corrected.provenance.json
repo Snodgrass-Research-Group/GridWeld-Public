@@ -1,0 +1,17 @@
+{
+ "generated": "2026-07-19",
+ "source_bus_table": "EPIGRIDS-Time-Series-Load-Code/data/caiso/bus_table.parquet (LoadSmith data/caiso/bus_table.parquet)",
+ "state_peak_mw": 47257.0,
+ "sum_legacy_mw": 59069.91,
+ "sum_corrected_mw": 47257.0,
+ "sum_corrected_mvar": 17861.901852457613,
+ "rows": 8034,
+ "zero_legacy_p_rows": 2,
+ "factor_quantiles_nonzero": {
+  "0.05": 0.797918834086311,
+  "0.25": 0.7990509313585559,
+  "0.5": 0.7997057654912839,
+  "0.75": 0.800189017415831,
+  "0.95": 0.8007488640906899
+ }
+}

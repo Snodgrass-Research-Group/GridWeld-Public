@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use GridWeld, please cite it and the California Test System (CATS) paper it reproduces."
+title: "GridWeld"
+type: software
+license: MIT
+repository-code: "https://github.com/Snodgrass-Research-Group/GridWeld-Public"
+authors:
+  - family-names: Snodgrass
+    given-names: Jonathan M.
+    orcid: "https://orcid.org/0000-0003-2305-8136"
+references:
+  - type: software
+    title: "CATS — California Test System (WildfireMapData pipeline)"
+    repository-code: "https://github.com/WISPO-POP/WildfireMapData"
+    authors:
+      - family-names: Taylor
+        given-names: Sofia
+      - family-names: Rhodes
+        given-names: Noah
+      - family-names: Rangarajan
+        given-names: Aditya
+      - family-names: Snodgrass
+        given-names: Jonathan M.
+      - family-names: Lesieutre
+        given-names: Bernard C.
+      - family-names: Roald
+        given-names: Line
