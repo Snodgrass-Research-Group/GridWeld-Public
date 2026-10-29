@@ -256,7 +256,7 @@ wheels = [
 [[package]]
 name = "gridcrucible"
 version = "0.1.0"
-source = { git = "https://github.com/Snodgrass-Research-Group/GridCrucible-Public.git?rev=main#286a348f36f7875c718fd2efdc6c1598744784dd" }
+source = { git = "https://github.com/Snodgrass-Research-Group/GridCrucible-Public.git?rev=main#6124257d913eff5516d5a027a931da1f735b8fca" }
 dependencies = [
     { name = "gurobipy" },
     { name = "matplotlib" },
@@ -274,7 +274,7 @@ dependencies = [
 [[package]]
 name = "gridforge"
 version = "0.1.0"
-source = { git = "https://github.com/Snodgrass-Research-Group/GridForge-Public.git?rev=main#30849139a2fc2ab89c6a1e182982b8c5be908a81" }
+source = { git = "https://github.com/Snodgrass-Research-Group/GridForge-Public.git?rev=main#f69973c5ada2808ec5894698daa92222140912f8" }
 dependencies = [
     { name = "gurobipy" },
     { name = "matplotlib" },
