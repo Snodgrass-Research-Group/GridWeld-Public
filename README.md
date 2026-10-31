@@ -7,9 +7,8 @@ the California Test System** (Sofia Taylor, Noah Rhodes, Aditya Rangarajan,
 Jonathan Snodgrass, Bernie Lesieutre, Line Roald — UW–Madison).
 
 This is a Python consolidation of the original three-language CATS pipeline
-(ArcGIS/ArcPy → Julia → MATLAB,
-[WISPO-POP/WildfireMapData](https://github.com/WISPO-POP/WildfireMapData)) into
-one package. It belongs to a family of synthetic-grid tools:
+(ArcGIS/ArcPy → Julia → MATLAB; its repository, WISPO-POP/WildfireMapData, is
+not public) into one package. It belongs to a family of synthetic-grid tools:
 [GridForge](https://github.com/Snodgrass-Research-Group/GridForge-Public)
 (topology), [GridCrucible](https://github.com/Snodgrass-Research-Group/GridCrucible-Public)
 (KCL-KVL), [GridTemper](https://github.com/Snodgrass-Research-Group/GridTemper-Public)
@@ -50,10 +49,15 @@ run does not use.
 
 ## Input data
 
-The CATS inputs are not in this repository. Clone
-[WISPO-POP/WildfireMapData](https://github.com/WISPO-POP/WildfireMapData) and
-point the run at it: copy `configs/cats.toml` (for example to
-`configs/cats_local.toml`) and add under `[paths]`:
+The CATS inputs are not in this repository, and the repository that holds them
+(WISPO-POP/WildfireMapData) is not public. To request them, contact the CATS
+authors named above. The published CATS model is public at
+[WISPO-POP/CATS-CaliforniaTestSystem](https://github.com/WISPO-POP/CATS-CaliforniaTestSystem),
+but it does not include this input tree.
+
+Once you have a copy of the inputs, point the run at it: copy
+`configs/cats.toml` (for example to `configs/cats_local.toml`) and add under
+`[paths]`:
 
 ```toml
 root = "C:/path/to/WildfireMapData"
@@ -210,8 +214,8 @@ Synthetic Electric Grids."
 
 ## Related repositories
 
-- [WISPO-POP/WildfireMapData](https://github.com/WISPO-POP/WildfireMapData):
-  the original CATS pipeline and input data.
+- WISPO-POP/WildfireMapData (not public): the original CATS pipeline and input
+  data.
 - [WISPO-POP/CATS-CaliforniaTestSystem](https://github.com/WISPO-POP/CATS-CaliforniaTestSystem):
   the published CATS model (MATPOWER and GIS files) that `gridweld` aims to
   reproduce.

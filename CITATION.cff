@@ -10,8 +10,8 @@ authors:
     orcid: "https://orcid.org/0000-0003-2305-8136"
 references:
   - type: software
-    title: "CATS — California Test System (WildfireMapData pipeline)"
-    repository-code: "https://github.com/WISPO-POP/WildfireMapData"
+    title: "CATS — California Test System"
+    repository-code: "https://github.com/WISPO-POP/CATS-CaliforniaTestSystem"
     authors:
       - family-names: Taylor
         given-names: Sofia
